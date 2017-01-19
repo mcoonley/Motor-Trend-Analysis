@@ -1,0 +1,128 @@
+---
+title: "Motor Trend Analysis - MPG and Transmissions"
+author: "Mari Coonley"
+date: "January 19, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###Exectutive Summary
+
+We have been asked to review the dataset from **_Motor Trend US_** magazine from 1974.  This dataset is comprised of fuel consumption and ten other aspects of automobile design and performance for 32 automobiles, model years 1973 & 1974.
+
+Questions of interest include:
+
+Is an automatic or manual transmission better for MPG?
+
+Quantify the MPG difference between automatic and manual transmissions.
+
+When comparing only miles per gallon and the type of transmission using simple linear regression, I discovered the average MPG for a manual transmission is 24.39 miles per gallon of fuel.  Whereas, the average MPG for an automatic transmission is 17.15. This suggests manual transmissions provide better fuel efficiency.  Further, when using multivariate regression to take in to account the number of cylinders, gross horsepower and weight, after averaging each of those additional explanatory variables by centering, I concluded the manual transmission again, had a higher MPG, with 21.01, as compared with the automatic transmissionMPG measuring 19.46. Residual plots and diagnosis as well as t-testing further confirm this assumption. 
+
+###Data Processing
+ 
+I first created a secondary data set, _mtcars2_, including only the desired additional exploratory variables.
+```{r, data1}
+library(datasets)
+data(mtcars)
+mtcars2<-mtcars[c(-5,-7, -8, -10, -11)]
+mtcars2$am<-as.factor(mtcars2$am)
+library(plyr)
+mtcars2$am<-revalue(mtcars2$am, c("0"="auto", "1"="man"))
+str(mtcars2)
+```
+Next I created a tertiary dataset, _mtcars3_, centering the exploratory variables.
+```{r, data2}
+mtcars3<-NULL
+mtcars3$mpg<-mtcars2$mpg; mtcars3$am<-mtcars2$am
+mtcars3$disp<-mtcars2$disp-mean(mtcars2$disp)
+mtcars3$cyl<-mtcars2$cyl-mean(mtcars2$cyl)
+mtcars3$hp<-mtcars2$hp-mean(mtcars2$hp)
+mtcars3$wt<-mtcars2$wt-mean(mtcars2$wt)
+mtcars3<-data.frame(mtcars3$mpg, mtcars3$cyl, mtcars3$disp, mtcars3$hp, mtcars3$wt,mtcars3$am)
+names(mtcars3)<- c("mpg", "cyl", "disp","hp", "wt", "am")
+str(mtcars3)
+```
+###Exploratory Data Analysis
+After comparing the correlations between all exploratory variables and MPG, as well as researching each topic individually, I selected cylinders, displacement, horsepower and weight as the exploratory variables having the most direct affect on MPG. (see Exp. 1 in Appendix)
+I next generated a boxplot depicting correlation between mpg and automatic and manual transmissions (see figure 1 in Appendix) as well as a second pairs plot with only the selected variables. (see figure 2 in Appendix).
+
+###Regression Models
+Initially, I calculated a simple linear regression model comparing MPG to the factored transmissions variable.
+```{r fit1}
+fit1<-lm(mpg~am-1, mtcars2)
+fit1$coefficients
+```
+I next generated multivariate regression models using  the original data, _mtcars2_, and the data centering the exploratory variables by averaging them, _mtcars3_.
+```{r fit2 fit3}
+fit2<-lm(mpg~am-1+cyl+disp+hp+wt, mtcars2)
+fit3<-lm(mpg~am-1+cyl+disp+hp+wt, mtcars3)
+compfits<-data.frame(fit2$coefficients, fit3$coefficients)
+compfits
+```
+_Fit2_ coefficients reflect the average MPG, per automatic and manual, when cylinders, displacement, horsepower and weight are at zero.  On the other hand, _fit3_ reflects MPG accounting for the averages of cylinders, horsepower, and weight.  _fit3_ is a more reasonable analysis than _fit2_ simply because without cylinders, displacement and horsepower, which have weight, MPG would not be possible (i.e. when those exploratory variables equaling zero). Note the slopes of the exploratory variables don't change, only the intercepts for manual and automatic. 
+
+###Residuals Plots and Diagnosis
+Let's run the set of diagnostic plots for linear regression to assess leverage and influence. 
+
+```{r, fig.height=6, fig.width=6}
+par(mfrow = c(2,2))
+plot(fit2)
+```
+
+Review each plot.
+
+1. _Residual vs. Fitted_ - no systematic pattern is evidence of fit.
+
+2. _Normal Q-Q_ - 3 outliers, still on the line, but outside cluster suggests high leverage but low influence, normally distributed.
+
+3. _Scale-Location_ - shows fairly equally spread residual both above and below the line, line is fairly horizontal, suggesting equal variance.
+
+4. _Residual vs. Leverage_ outliers in the upper and/or lower right hand corners of this plot around and outside dashed line, are considered influential as well as having leverage.  There are none present, including the outliers visible in all the other plots.  This suggest that while these outliers have leverage, they have little influence on the regression. 
+
+###Inferences
+Lastly, lets run a t-test to check significance.
+```{r ttest}
+t.test(mpg~am, mtcars)
+```
+The relatively large t-value coupled with the small size of the p-value we can infer that the unstated null hypothesis that there is no significant difference in mpg of manual and automatic transmissions should be rejected.  Further note, the calculated means of the two transmissions are the same as calculated using regression analysis. 
+
+###Conclusion
+In conclusion, based on the analysis data, the null hypothesis that there is no difference in the miles per gallon based on a vehicle having either a manual or automatic transmission can be rejected.  There are some uncertainties to take into consideration with this analysis.  First, the data set is fairly small, we have to consider how it would translate to a much larger data set.  Also, even though the residual analysis shows a fairly good evidence of fit, would the inclusion of other exploratory variables, such as displacement or type of engine had any impact, or merely inflated the variances? While I am confident my analysis is correct, there is always room to question these and other concerns. 
+
+
+##Appendix
+
+###Figure 1
+
+```{r corr}
+disp<-cor(mtcars$mpg,mtcars$disp)
+hp<-cor(mtcars$mpg,mtcars$hp)
+wt<-cor(mtcars$mpg,mtcars$wt)
+cyl<-cor(mtcars$mpg,mtcars$cyl)
+data.frame(disp, hp, wt, cyl)
+rraxl<-cor(mtcars$mpg,mtcars$drat)
+gear<-cor(mtcars$mpg,mtcars$gear)
+carb<-cor(mtcars$mpg,mtcars$carb)
+data.frame(rraxl, gear, carb)
+```
+
+###Figure 2
+
+```{r,fig.height=4, fig.width=4}
+plot(mpg~am, mtcars2)
+```
+
+###Figure 3
+
+```{r,  fig.height=4, fig.width=4}
+pairs(mtcars2)
+```
+
+
+
+
+  
+   
